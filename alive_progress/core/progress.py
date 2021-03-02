@@ -97,14 +97,15 @@ def alive_bar(total=None, title=None, *, calibrate=None, **options):
             time.sleep(1. / fps(run.rate))
 
     def alive_repr(spin=None):
-        run.rate = current() / elapsed if elapsed else 0.
         run.elapsed = time.perf_counter() - run.init
+        run.rate = current() / run.elapsed if run.elapsed else 0.
 
         fragments = (title, bar_repr(run.percent), spin, monitor(),
                      elapsed(), stats(), run.text)
 
+        cols = terminal_cols()
         with hook_manager.lock:
-            run.last_line_len = print_cells(fragments, cols, run.last_line_len)
+            run.last_len = print_cells(fragments, cols, run.last_len)
             sys.__stdout__.flush()
 
     def set_text(message):
