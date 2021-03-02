@@ -2,6 +2,7 @@ import math
 import sys
 import threading
 import time
+import collections
 from contextlib import contextmanager
 
 from .calibration import calibrated_fps
@@ -170,8 +171,18 @@ def alive_bar(total=None, title=None, *, calibrate=None, **options):
         rate_spec, factor, print_template = '%', 1., 'on {:.1%}: '
 
     bar_handle.text, bar_handle.current = set_text, current
-    bar_repr = _create_bars(config)
+
+    def bar_repr(percent):
+        """Create representation of progress bar for printing."""
+        if not bar_repr.bar:
+            return None
+        return bar_repr.bar(bar_repr.state, percent)
+
+    bar_repr.reprs = _create_bars(config)
+    bar_repr.state = bar_repr.reprs.running
     if total or config.manual:  # we can track progress and therefore eta.
+        bar_repr.bar = bar_repr.reprs.known
+
         gen_eta = gen_simple_exponential_smoothing_eta(.5, logic_total)
         gen_eta.send(None)
 
@@ -179,7 +190,7 @@ def alive_bar(total=None, title=None, *, calibrate=None, **options):
             eta = eta_text(gen_eta.send((current(), run.rate)))
             return f'({run.rate:.1{rate_spec}}/s, eta: {eta})'
     else:  # unknown progress.
-        bar_repr = bar_repr.unknown
+        bar_repr.bar = lambda _, y: bar_repr.reprs.unknown(y)
 
         def stats():
             return f'({run.rate:.1f}/s)'
@@ -251,10 +262,11 @@ def alive_bar(total=None, title=None, *, calibrate=None, **options):
     elapsed, stats, monitor = elapsed_end, stats_end, monitor_end
     if not config.receipt_text:
         run.text = ''
-    bar_repr = bar_repr.end
+    bar_repr.state = bar_repr.reprs.end
     alive_repr()
     print()
 
+Bars = collections.namedtuple('Bars', ['known', 'running', 'end', 'unknown'])
 
 def _create_bars(local_config):
     bar = local_config.bar
@@ -262,7 +274,7 @@ def _create_bars(local_config):
         obj = lambda p: None
         obj.unknown, obj.end = obj, obj
         return obj
-    return bar(local_config.length, local_config.unknown)
+    return Bars(*bar(local_config.length, local_config.unknown))
 
 
 def _create_spinner_player(local_config):
