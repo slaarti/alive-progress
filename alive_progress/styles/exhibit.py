@@ -1,3 +1,5 @@
+# pylint: disable=missing-module-docstring, too-many-locals
+# pylint: disable=invalid-name, blacklisted-name
 import random
 import re
 import time
@@ -6,10 +8,10 @@ from enum import Enum
 from shutil import get_terminal_size
 
 from .internal import BARS, SPINNERS, THEMES
-from ..animations.spinners import compound_spinner_factory, scrolling_spinner_factory
+from ..animations.spinners import sequential_spinner_factory, scrolling_spinner_factory
 from ..animations.utils import spinner_player
 from ..core.configuration import config_handler
-from ..core.utils import hide_cursor, show_cursor
+from ..utils.terminal import hide_cursor, show_cursor
 
 Show = Enum('Show', 'SPINNERS BARS THEMES')
 
@@ -92,10 +94,9 @@ def _filter(source, pattern):
 
 def _showtime_gen(fps, prepared_gen, displaying, line_pattern, length=None):
     logo_player, info_player = spinner_player(SPINNERS['waves']()), None
-    info_spinners = compound_spinner_factory(
+    info_spinners = sequential_spinner_factory(
         scrolling_spinner_factory(f'showing: preconfigured {displaying}', right=False),
-        scrolling_spinner_factory('and you can create your own styles, enjoy :)', right=False),
-        alongside=False
+        scrolling_spinner_factory('and you can create your own styles, enjoy :)', right=False)
     )
 
     # initialize generators, sending fps and config params (list is discarded).
